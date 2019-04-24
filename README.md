@@ -8,9 +8,11 @@ Given its importance, a case can be made for an automated process that wraps suf
 
 ## Solution
 
-The institution has been adopting DevOps approaches and patterns of behavior. After a few months of manually creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets, the operational engineering team observes a pipeline of well-defined inputs and outputs emerging and a set of business rules coalescing around the naming conventions and tagging of the resource groups. They have refactored the Azure Resource Group templates and have begun to create a library of Powershell code snippets to reliably create appropriately named and tagged resource groups.
+The institution has been adopting DevOps approaches and patterns of behavior. After a few months of manually creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets, the operations engineering team is observing that a set of well-defined inputs, processes, and outputs governed by business rules around the naming conventions and tagging of the resource groups is coalescing. They have refactored the Azure Resource Group templates and have begun to create a library of Powershell code snippets to reliably create appropriately named and tagged resource groups.
 
-The next step is enabling the rest of the instition's technical teams to consume this automation.
+The next step is providing the means for the rest of the instition's technical teams to consume this automation. Traditionally automation of this type has been maintained and stored in a common repository or artifactory to be invoked interactively by an operations engineer. Another team has created a self-service portal that allows members of the institution to create resources in multiple public and private clouds through invoking API calls against REST endpoints. They would like to leverage the operational teams Azure automation library.
+
+Azure provides many serverless options that ease the reusability of automation and event driven implementation of this automation. This solution takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation, and Logic Apps to provide a lightweight API endpoint to trigger the Runbook.
 
 
 ![ResourceGroupLogicAppArchitecture](assets/ResourceGroupLogicAppArchitecture.svg)
@@ -107,6 +109,11 @@ $automationAccount = New-AzAutomationAccount -Name 'resourcegroup-automation' `
                                              -Plan basic
 
 $AZURE_AUTOMATION_ACCOUNT_NAME = $automationAccount.AutomationAccountName
+
+# Assign the owner role for the RunAsAccount over the resourceGroups scope
+$AZURE_RUNAS_ACCOUNT_ID = $(Get-AzADServicePrincipal -DisplayNameBeginsWith "$AZURE_AUTOMATION_ACCOUNT_NAME`_").Id
+
+New-AzRoleAssignment -Scope
 
 # Establish variables for the runbook to use
 New-AzAutomationVariable -AutomationAccountName $AZURE_AUTOMATION_ACCOUNT_NAME `
