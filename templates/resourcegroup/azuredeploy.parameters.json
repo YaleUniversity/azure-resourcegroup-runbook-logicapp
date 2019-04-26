@@ -11,6 +11,5 @@
         "DataSensitivity": { "value": "{{ DataSensitivity }}"},
         "Environment": { "value": "{{ Environment }}" },
         "Application": { "value": "{{ Application }}" }
-      }
-      
+      }   
   }

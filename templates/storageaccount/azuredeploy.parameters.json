@@ -3,8 +3,8 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
 
-    "SkuName" : { "value": "SkuName" },
-    "AccountKind" : { "value": "{{ AccessTierDefault }}" },
+    "SkuName" : { "value": "{{ SkuName }}" },
+    "AccountKind" : { "value": "{{ AccountKind }}" },
     "AccessTierDefault": {"value": "{{ AccessTierDefault }}"},
 
     "CustomDomain": { "value": "{{ CustomDomain }}" },

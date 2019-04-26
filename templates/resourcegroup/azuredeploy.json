@@ -72,10 +72,10 @@
         "resourceGroupName": "[concat(parameters('OwnerNetId'), '-', parameters('Application'), '-', parameters('Environment'), '-', parameters('OwnerDepartment'), '-', parameters('ResourceLocation'), '-rg')]",
         "resourceLocation": "[parameters('ResourceLocation')]",
         "resourceTags": {
-            "ownerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
-            "dataSensitivity": "[parameters('DataSensitivity')]",
-            "chargingAccount": "[parameters('ChargingAccount')]",
-            "name": "[variables('resourceGroupName')]"
+            "OwnerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
+            "DataSensitivity": "[parameters('DataSensitivity')]",
+            "ChargingAccount": "[parameters('ChargingAccount')]",
+            "Name": "[variables('resourceGroupName')]"
         }
     },
     "resources": [

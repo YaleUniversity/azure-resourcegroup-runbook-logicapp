@@ -109,10 +109,10 @@
         "accessTierDefault": "[parameters('AccessTierDefault')]",
         "customDomain": "[parameters('customDomain')]",
         "resourceTags": {
-            "ownerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
-            "dataSensitivity": "[parameters('DataSensitivity')]",
-            "chargingAccount": "[parameters('ChargingAccount')]",
-            "name": "[variables('baseString')]"
+            "OwnerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
+            "DataSensitivity": "[parameters('DataSensitivity')]",
+            "ChargingAccount": "[parameters('ChargingAccount')]",
+            "Name": "[variables('baseString')]"
         }
     },
 
