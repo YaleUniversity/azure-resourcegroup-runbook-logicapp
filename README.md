@@ -18,7 +18,7 @@ The operational team has has been maintaining and storing this library in a comm
 
 However, another team has created a self-service portal that allows members of the institution to create resources in multiple public and private clouds through REST API calls against cloud platform endpoints. This team would like to bring Azure within the portfolio of services available through their tool. They would like to leverage the operational teams Azure automation library.
 
-Azure provides many options to facilitate the reusability of automation.  Serveless and event driven implementation of this automation. This solution takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation, and Logic Apps to provide a lightweight API endpoint to trigger the Runbook.
+Azure provides many options to facilitate the reusability of automation.  Serverless and event driven implementation of this automation. This solution takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation, and Logic Apps to provide a lightweight API endpoint to trigger the Runbook and return an HTTP response with the results of the action.
 
 
 ![ResourceGroupLogicAppArchitecture](assets/ResourceGroupLogicAppArchitecture.svg)
