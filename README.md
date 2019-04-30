@@ -218,9 +218,7 @@ Get-ChildItem -Recurse ./templates -Filter '*.json' | % {Set-AzStorageBlobConten
 
 ### Create Azure Automation Account
 
-An Azure Automation Account is a container that holds the assets necessary to perform automation tasks against Azure resources, as well as external resources. The Azure automation account comprises common assets such scripts and workflows, modules, and variables. It can accommodate Python2 and PoweShell, two high-level interpreted languages commonly used by system administrators for routine automation tasks. An automation account posseses a service principal that is granted a `Contributor` role to the subscription.
-
-Additionally, the automation account will require the `Owner` role assigned to it at the `resourcegroups` scope of the subscription since it will need to assign ownership of the resource group to the user.
+An Azure Automation Account is a container that holds the assets necessary to perform automation tasks against Azure resources, as well as external resources. The Azure automation account comprises common assets such scripts and workflows, modules, and variables. It can accommodate Python2 and PoweShell, two high-level interpreted languages commonly used by system administrators for routine automation tasks. 
 
 ```powershell
 # Create Automation Account
@@ -231,6 +229,39 @@ $automationAccount = New-AzAutomationAccount -Name 'resourcegroup-automation' `
 
 $AZURE_AUTOMATION_ACCOUNT_NAME = $automationAccount.AutomationAccountName
 $AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId
+
+```
+
+An automation account contains an Azure Runas Account, an application service principal that is granted a `Contributor` role to the subscription.
+
+Additionally, this runas account will require the `Owner` role assigned to it at the `resourcegroups` scope of the subscription since it will need to assign ownership of the resource group to the user.
+
+In the Azure Portal, creating an Azure Automation Account creates an Azure Runas Account. (Actually, it creates two accounts--each corresponding to Azure Resource Manager and Azure Classic.)
+
+Microsoft provides a convenient script [New-RunasAccount.ps1](https://docs.microsoft.com/en-us/azure/automation/manage-runas-account) that creates a new self-signed certificate, creates an application service principal associated witht he automatin account, creates an automation connection, and assignes the `Contributor` role to the service principal over a specified subscription.
+
+Because this script assumes a Windows server environment, it will not work with PowerShell Core (Dotnet Core). It will be necessary to use the Azure Portal.
+
+(**TODO**: Incorporate [SelfSignedCertificate](https://www.powershellgallery.com/packages/SelfSignedCertificate/0.0.4) module for pure CLI implementation.)
+
+Navigate to the Azure Portal page for the automation account **resourcegroup-automation** and select **Run as accounts** under **Account Settings**. Click on **Azure Run as Account**.
+
+![CreateAzureAutomationRunasAccountBladeAzurePortal](assets/CreateAzureAutomationRunasAccountBladeAzurePortal.png)
+
+Click **Create** on the following blade:
+
+![CreateAzureAutomationRunasRMAzurePortal](assets/CreateAzureAutomationRunasRMAzurePortal.png)
+
+This will result in a new Azure Automation Run as Account:
+
+![AzureAutomationRunasAccountBladeAzurePortal](assets/AzureAutomationRunasAccountBladeAzurePortal.png)
+
+A corresponding **AzureRunAsConnection** will be created also and can be viewed under the **Shared Resources** of the ***resourcegroups-automation** Azure Automation Account:
+
+![SharedResourcesAzureAutomationBladeAzurePortal](assets/SharedResourcesAzureAutomationBladeAzurePortal.png)
+
+
+```powershell
 
 # Assign the owner role for the RunAsAccount over the resourceGroups scope
 New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
@@ -290,30 +321,6 @@ Import-AzAutomationRunbook -Path .\runbook\New-ResourceGroup.ps1 `
                            -Type PowerShell
 
 ```
-
-In the Azure Portal, creating an Azure Automation Account creates an Azure Runas Account. (Actually, it creates two accounts--each corresponding to Azure Resource Manager and Azure Classic.)
-
-Microsoft provides a convenient script [New-RunasAccount.ps1](https://docs.microsoft.com/en-us/azure/automation/manage-runas-account) that creates a new self-signed certificate, creates an application service principal associated witht he automatin account, creates an automation connection, and assignes the `Contributor` role to the service principal over a specified subscription.
-
-Because this script assumes a Windows server environment, it will not work with PowerShell Core (Dotnet Core). It will be necessary to use the Azure Portal.
-
-(**TODO**: Incorporate [SelfSignedCertificate](https://www.powershellgallery.com/packages/SelfSignedCertificate/0.0.4) module for pure CLI implementation.)
-
-Navigate to the Azure Portal page for the automation account **resourcegroup-automation** and select **Run as accounts** under **Account Settings**. Click on **Azure Run as Account**.
-
-![CreateAzureAutomationRunasAccountBladeAzurePortal](assets/CreateAzureAutomationRunasAccountBladeAzurePortal.png)
-
-Click **Create** on the following blade:
-
-![CreateAzureAutomationRunasRMAzurePortal](assets/CreateAzureAutomationRunasRMAzurePortal.png)
-
-This will result in a new Azure Automation Run as Account:
-
-![AzureAutomationRunasAccountBladeAzurePortal](assets/AzureAutomationRunasAccountBladeAzurePortal.png)
-
-A corresponding **AzureRunAsConnection** will be created also and can be viewed under the **Shared Resources** of the ***resourcegroups-automation** Azure Automation Account:
-
-![SharedResourcesAzureAutomationBladeAzurePortal](assets/SharedResourcesAzureAutomationBladeAzurePortal.png)
 
 In order for the automation account to access the storage blob, the `Azure Storage Blob Reader` role must be assigned to it. Returning to PowerShell:
 
