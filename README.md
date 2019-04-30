@@ -141,7 +141,7 @@ A resource group template that enforces business rules around naming and tagging
 
 This template will be used by the automated process to create subsequent resource groups.
 
-(This template is based on the raw json template exports of resources created by routine operations. Common values in those templates were refactored into reusable variables in the `"variables"` node of the template. Common iput values to create this resource have been refactored into the `"parameters"` node and constitue a lightweight interface for deployment. The details for this iterative approach to Azure Resource Manager template authoring will be covered in a subsequent document.)
+(This template is based on the raw json template exports of resources created by routine operations. Common values in those templates were refactored into reusable variables in the `"variables"` node of the template. Common input values to create this resource have been refactored into the `"parameters"` node and constitute a lightweight interface for deployment. The details for this iterative approach to Azure Resource Manager template authoring will be covered in a subsequent document.)
 
 ```powershell
 
