@@ -302,18 +302,15 @@ $AZURE_AUTOMATION_MODULES = @(
 ) | % {Find-Module -Name $_ -Repository PSGallery}
 
 
+# TODO: Aa.Accounts must be imported successfully first; otherwise subsequet Az.* module imports fail.
+# Create polling loop before importing Az.Resources and Az.Storage.
+
 $AZURE_AUTOMATION_MODULES | % {
     New-AzAutomationModule -AutomationAccountName $AZURE_AUTOMATION_ACCOUNT_NAME `
                            -ResourceGroupName $AZURE_RESOURCE_GROUP `
                            -ContentLink $('{0}/package/{1}/{2}' -f $_.RepositorySourceLocation, $_.Name, $_.Version) `
                            -Name $_.Name
 }
-
-
-#$runbook = New-AzAutomationRunbook -Name 'ResourceGroup' `
-#                                   -AutomationAccountName $automationAccount.automationAccountName `
-#                                   -ResourceGroupName $AZURE_RESOURCE_GROUP `
-#                                   -Type powershell
 
 Import-AzAutomationRunbook -Path .\runbook\New-ResourceGroup.ps1 `
                            -ResourceGroupName $AZURE_RESOURCE_GROUP `
@@ -334,9 +331,24 @@ New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
     -Scope  "$AZURE_STORAGE_ROLE_SCOPE"
 ```
 
+## Create Azure Logic App, HTTP Trigger
+[THIS is the midst of testing.]
+
+## Test Solution
+```bash
+curl "$AZURE_LOGICAPP_HTTP_ENDPOINT"-H 'Content-Type: application/json' -d "${JSON_PAYLOAD}"`
+```
+```powershell
+Invoke-WebRequest -Uri
+```
+
 ## Author
 
 Vincent Balbarin <vincent.balbarin@yale.edu>
+
+## License
+
+These documents are licensed under the [MIT License](/LICENSE.md) held by [@YaleUniversity](https://github.com/YaleUniversity).
 
 ## References
 [5 Approaches for Public Cloud Self-Service Enablement and Governance (Gartner Subscriber Content)](https://www.gartner.com/document/3880094)
