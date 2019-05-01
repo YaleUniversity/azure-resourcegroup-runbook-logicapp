@@ -16,12 +16,12 @@ param(
     [Parameter(Mandatory=$True,HelpMessage='The string denoting the account to which costs incurred by the application or workload to be placed in Azure should be charged.')]
     [string] $ChargingAccount,
 
-    [ValidateSet('High', 'Moderate', 'Low', 'None', 'high', 'moderate', 'low', 'none')]
     [Parameter(Mandatory=$True,HelpMessage='A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).')]
+    [ValidateSet('High', 'Moderate', 'Low', 'None', 'high', 'moderate', 'low', 'none')]
     [string] $DataSensitivity,
 
-    [ValidateSet('dev', 'test', 'prod', 'Dev', 'Test', 'Prod')]
     [Parameter(Mandatory=$True,HelpMessage='The application or workload environment. Available values are dev, test and prod.')]
+    [ValidateSet('dev', 'test', 'prod', 'Dev', 'Test', 'Prod')]
     [string] $Environment,
 
     [Parameter(Mandatory=$True,HelpMessage='A string that identifies the product or function of the application or workload to be placed in Azure.')]
@@ -55,6 +55,7 @@ Add-AzAccount -ServicePrincipal `
               -ApplicationId $servicePrincipalConnection.ApplicationId `
               -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint
 
+# Storage Blob Container should be configured to use AAD authentication (preview)
 $storageContext = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
                                        -UseConnectedAccount
 
@@ -74,7 +75,15 @@ $deployment = New-AzDeployment -Name $deploymentName `
                                -WhatIf
 $deployment
 
-#$output = [PSCustomObject] @{}
+# Return Context of user account
+Get-AzContext
 
-#$STORAGE_ACCOUNT_KEY = $(Get-AzStorageAccountKey -Name $AZURE_STORAGE_ACCOUNT -ResourceGroupName $AZURE_STORAGE_ACCOUNT_RESOURCEGROUP | ? {$_.KeyName -eq 'key1'}).Value
-#$STORAGE_ACCOUNT_KEY
+<#
+TODO: Assign the Owner or Contributor to the newly created resource group.
+
+**HOWEVER**, the RunasAutomationAccount cannot read AAD to retreieve the ADUser associated
+with the provided email/SignOnName.
+
+As a test,
+Get-AzADUser -UPN first.last@{{ domain name}} returns nothing.
+#>
