@@ -1,4 +1,4 @@
-# Creation of Azure Resource Groups through Serverless Automatiion
+# Creation of Azure Resource Groups through Serverless Automation
 
 ## Introduction
 A resource group in Azure is a container that holds Azure resources such as virtual machine instances, virtual networks, storage accounts, etc. It provides an accounting and security context for the life cycle of resources within its scope. Access to the resources within the boundaries of this scope is granted to security principals (which take the form of users or applications) in Azure Active Directory. The degree of access is determined by the policies attached to the roles assigned to these security principals. The costs incurred by any Azure resources can be managed as a unit.
@@ -9,17 +9,18 @@ Given its importance, a case can be made for an automated process that wraps suf
 
 This proposed solution adheres to the following design principles:
 
-1. Cloud automation proceed bottom up. This automation should be derived from well understood operational pipelines. It should originate directly from the automation artifacts of the teams responsible for the creation and maintenance of resources in the cloud.
+1. Cloud automation should proceed bottom up. This automation should be derived from well understood operational pipelines. It should originate directly from the automation artifacts of the teams responsible for the creation and maintenance of resources in the cloud.
 2. Cloud automation should be reusable. This reusability should be accomplished by taking advantage of cloud native platform services to create an institutional API clearinghouse.
 
-The institution has been adopting DevOps approaches and patterns of behavior. After a few months of manually creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets, the operations engineering team is observing that a set of well-defined inputs, processes, and outputs governed by business rules around the naming conventions and tagging of the resource groups is coalescing. They have refactored the Azure Resource Group templates and have begun to create a library of Powershell code snippets to reliably create appropriately named and tagged resource groups.
+The institution has been adopting DevOps approaches and patterns of behavior. After a few months of manually creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets, the operations engineering team has observed coalescence around a set of well-defined inputs, processes, and outputs governed by business rules around the naming conventions and tagging of these resource groups.
 
-The operational team has has been maintaining and storing this library in a common repository. They invoke the code interactively to create resource groups that conform to naming and resource taggin conventions.
+They have refactored the Azure Resource Group templates and have begun to create a library of Powershell code snippets to reliably create appropriately named and tagged resource groups.
 
-However, another team has created a self-service portal that allows members of the institution to create resources in multiple public and private clouds through REST API calls against cloud platform endpoints. This team would like to bring Azure within the portfolio of services available through their tool. They would like to leverage the operational teams Azure automation library.
+The operational team has has been maintaining and storing this library in a common repository. They invoke the code interactively to create resource groups that conform to naming and resource tagging conventions.
 
-Azure provides many options to facilitate the reusability of automation.  Serverless and event driven implementation of this automation. This solution takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation, and Logic Apps to provide a lightweight API endpoint to trigger the Runbook and return an HTTP response with the results of the action.
+However, another team has created a self-service portal that allows members of the institution to create resources in multiple public and private clouds through REST API calls against cloud platform endpoints. This team would like to bring Azure within the portfolio of services available through their tool. They would like to leverage the operational team's Azure automation library.
 
+Azure provides many options to facilitate the reusability of automation.  [TODO: Discuss serverless and event driven implementations in Azure.] This solution takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation, and Logic Apps to provide a lightweight API endpoint to trigger the Runbook and return an HTTP response with the results of the action.
 
 ![ResourceGroupLogicAppArchitecture](assets/ResourceGroupLogicAppArchitecture.svg)
 
@@ -228,7 +229,7 @@ $automationAccount = New-AzAutomationAccount -Name 'resourcegroup-automation' `
                                              -Plan basic
 
 $AZURE_AUTOMATION_ACCOUNT_NAME = $automationAccount.AutomationAccountName
-$AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId
+$AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId.Guid
 
 ```
 
@@ -252,7 +253,7 @@ Click **Create** on the following blade:
 
 ![CreateAzureAutomationRunasRMAzurePortal](assets/CreateAzureAutomationRunasRMAzurePortal.png)
 
-This will result in a new Azure Automation Run as Account:
+This will result in a new **Azure Automation Run As Account**:
 
 ![AzureAutomationRunasAccountBladeAzurePortal](assets/AzureAutomationRunasAccountBladeAzurePortal.png)
 
@@ -260,20 +261,31 @@ A corresponding **AzureRunAsConnection** will be created also and can be viewed 
 
 ![SharedResourcesAzureAutomationBladeAzurePortal](assets/SharedResourcesAzureAutomationBladeAzurePortal.png)
 
+To enable Runbook automation to perform operations against resources in the subscription, Azure assigns the `Contributor` role to the **Azure Run As Account** over the scope of hte subscription. In the particular case of this runbook script, the **Azure Run As Account** will require additional privileges. It requires the assignment the `Owner` role over the subscription because it must have the power to assign `Contributor` or `Owner` role to the user account corresponding to the User Principal Name (Sign In Name) specified in the JSON request to the Logic App trigger.
+
 
 ```powershell
-
-# Assign the owner role for the RunAsAccount over the resourceGroups scope
+# Assign the owner role for the RunAsAccount over the Subscription scope
 New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
                      -RoleDefinitionName 'Owner' `
                      -Scope $('/subscriptions/{0}' -f $AZURE_SUBSCRIPTION_ID)
+```
 
+Second, the **Azure Run As Account** requires sufficient privileges against the Azure AD Graph API  to read the Azure User object's properties. An Azure Active Directory administrator must assign `directory.read.all` role to the service principal in **App Registration** blade of the **Azure Portal**.
+
+```powershell
 # Establish variables for the runbook to use
 New-AzAutomationVariable -AutomationAccountName $AZURE_AUTOMATION_ACCOUNT_NAME `
                          -ResourceGroupName $AZURE_RESOURCE_GROUP `
                          -Encrypted $False `
                          -Name 'AZURE_STORAGE_ACCOUNT' `
                          -Value $AZURE_STORAGE_ACCOUNT
+
+New-AzAutomationVariable -AutomationAccountName $AZURE_AUTOMATION_ACCOUNT_NAME `
+                         -ResourceGroupName $AZURE_RESOURCE_GROUP `
+                         -Encrypted $True `
+                         -Name 'AZURE_STORAGE_KEY' `
+                         -Value $AZURE_STORAGE_KEY
 
 New-AzAutomationVariable -AutomationAccountName $AZURE_AUTOMATION_ACCOUNT_NAME `
                          -ResourceGroupName $AZURE_RESOURCE_GROUP `
@@ -323,7 +335,7 @@ In order for the automation account to access the storage blob, the `Azure Stora
 
 ```powershell
 
-$AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId
+$AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId.Guid
 $AZURE_STORAGE_ROLE_SCOPE = $('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Storage/storageAccounts/{2}/blobServices/default/containers/{3}' -f $AZURE_SUBSCRIPTION_ID, $AZURE_RESOURCE_GROUP, $AZURE_STORAGE_ACCOUNT, 'templates')
 
 New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
@@ -332,12 +344,18 @@ New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
 ```
 
 ## Create Azure Logic App, HTTP Trigger
-[THIS is the midst of testing.]
+
+An Azure Runbook allows an operations team to reuse automation code. It provides a container and runtime environment for the code. By exposing parameters of a Python 2 or Powershell script,it provides a convenient, lightweight user interface for operational tasks.
+
+Azure Logic Apps enables the creation of automation workflows that can integrate data, events, conditions, and applications within Azure Azure, private clouds, and other public cloud platforms.
+
+In this solution, a simple workflow is triggered by an HTTP request that is carrying a JSON payload of data collected by a self-service web application. The payload contains a user id, , department, contact email, charging code, environment, data security sensitivty level, and application name. The Logic App workflow de-serializes the JSON payload and furnishes them as inputs to Azure runbook. When the Azure Runbook completes, Logic Apps returns an HTTP response with the results of the runbook action serialized as JSON.
 
 ## Test Solution
 ```bash
 curl "$AZURE_LOGICAPP_HTTP_ENDPOINT"-H 'Content-Type: application/json' -d "${JSON_PAYLOAD}"`
 ```
+
 ```powershell
 Invoke-WebRequest -Uri
 ```
@@ -348,7 +366,7 @@ Vincent Balbarin <vincent.balbarin@yale.edu>
 
 ## License
 
-These documents are licensed under the [MIT License](/LICENSE.md) held by [@YaleUniversity](https://github.com/YaleUniversity).
+The licenses of these documents are held by [@YaleUniversity](https://github.com/YaleUniversity)under the [MIT License](/LICENSE.md).
 
 ## References
 [5 Approaches for Public Cloud Self-Service Enablement and Governance (Gartner Subscriber Content)](https://www.gartner.com/document/3880094)
@@ -357,4 +375,4 @@ These documents are licensed under the [MIT License](/LICENSE.md) held by [@Yale
 
 [Manage Runas Account](https://docs.microsoft.com/en-us/azure/automation/manage-runas-account)
 
-[Automation Deploy Template Runbook](https://docs.microsoft.com/en-us/azure/automation/automation-deploy-template-runbook)
+[Automation Deploy Template Runbook](https://docs.microsoft.com/en-us/azure/automation/automation-deploy-template-runbook) 
