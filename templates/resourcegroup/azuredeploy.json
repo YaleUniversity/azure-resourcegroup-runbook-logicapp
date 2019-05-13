@@ -15,32 +15,40 @@
                 "Description": "Azure region. (NB, This value will override the `-Location` parameter specified by `New-AzDeployment` or  the `--location` option of `az deploy create`"
             }
         },
-        "OwnerNetId":  {
+        "OwnerSignInName": {
             "type": "string",
             "metadata": {
-                "description": "The network id of the functional owner of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "OwnerDepartment": {
-            "type": "string",
-            "metadata": {
-                "description": "The abbreviation for the department of the functional owner of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "OwnerDepartmentContact": {
-            "type": "string",
-            "metadata": {
-                "description": "The email address of the functional owner of the application or workload to be placed in Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.",
-                "comment": "Enterprise Resource Tag"
+                "description": "The Azure sign-in name (email address) of the functional owner of the resource group to be placed into Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.",
+                "comment": "Institutional Property"
             }
         },
         "ChargingAccount": {
             "type": "string",
             "metadata": {
                 "description": "The string denoting the account to which costs incurred by the application or workload to be placed in Azure should be charged.",
-                "comment": "Enterprise Resource Tag"
+                "comment": "Institutional Property"
+            }
+        },
+        "ApplicationName": {
+            "type": "string",
+            "metadata": {
+                "description": "A string that identifies the product or function of the application or workload to be placed into Azure.",
+                "comment": "Institutional Property"
+            }
+        },
+        "ApplicationBusinessUnit": {
+            "type": "string",
+            "metadata": {
+                "description": "A string that identifies the institutional business unit or academic department served by he product or function of the application to be placed into Azure",
+                "comment": "Institutional Property"
+            }            
+        },
+        "Environment": {
+            "type": "string",
+            "allowedValues": [ "dev", "test", "prod", "Dev", "Test", "Prod" ],
+            "metadata": {
+                "description": "The application or workload environment. Available values are dev, test and prod.",
+                "comment": "Institutional Property"
             }
         },
         "DataSensitivity": {
@@ -49,30 +57,16 @@
             "allowedValues": [ "High", "Moderate", "Low", "None", "high", "moderate", "low", "none" ],
             "metadata": {
                 "description": "A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "Environment": {
-            "type": "string",
-            "allowedValues": [ "dev", "test", "prod", "Dev", "Test", "Prod" ],
-            "metadata": {
-                "description": "The application or workload environment. Available values are dev, test and prod.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "Application": {
-            "type": "string",
-            "metadata": {
-                "description": "A string that identifies the product or function of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
+                "comment": "Institutional Property"
             }
         }
     },
     "variables": {
-        "resourceGroupName": "[concat(parameters('OwnerNetId'), '-', parameters('Application'), '-', parameters('Environment'), '-', parameters('OwnerDepartment'), '-', parameters('ResourceLocation'), '-rg')]",
+        "resourceGroupName": "[concat(parameters('ApplicationName'), '-', parameters('ApplicationBusinessUnit'), '-', parameters('Environment'), '-', parameters('ResourceLocation'), '-rg')]",
         "resourceLocation": "[parameters('ResourceLocation')]",
         "resourceTags": {
-            "OwnerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
+            "Application": "[concat(parameters('ApplicationName'), '-', parameters('ApplicationBusinessUnit'))]",
+            "OwnerDepartmentContact": "[parameters('OwnerSignInName')]",
             "DataSensitivity": "[parameters('DataSensitivity')]",
             "ChargingAccount": "[parameters('ChargingAccount')]",
             "Name": "[variables('resourceGroupName')]"

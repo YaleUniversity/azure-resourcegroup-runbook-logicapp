@@ -4,12 +4,11 @@
 
     "parameters": {
         "ResourceLocation": {"value": "{{ ResourceLocation }}"},
-        "OwnerNetId": {"value": "{{ OwnerNetId }}"},
-        "OwnerDepartment": { "value": "{{ OwnerDepartment }}" },
-        "OwnerDepartmentContact": { "value": "{{ OwnerDepartmentContact }}" },
+        "OwnerSigninName": {"value": "{{ OwnerNetId }}"},
         "ChargingAccount": { "value": "{{ ChargingAccount }}" },
-        "DataSensitivity": { "value": "{{ DataSensitivity }}"},
+        "ApplicationName": { "value": "{{ ApplicationName }}" },
+        "ApplicationBusinessUnit": {"value": "{{ ApplicationBusinessUnit }}"},
         "Environment": { "value": "{{ Environment }}" },
-        "Application": { "value": "{{ Application }}" }
+        "DataSensitivity": { "value": "{{ DataSensitivity }}"}
       }   
   }

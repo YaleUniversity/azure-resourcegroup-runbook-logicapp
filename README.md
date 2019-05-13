@@ -1,7 +1,11 @@
 # Creation of Azure Resource Groups through Serverless Automation
 
 ## Introduction
-A resource group in Azure is a container that holds Azure resources such as virtual machine instances, virtual networks, storage accounts, etc. It provides an accounting and security context for the life cycle of resources within its scope. Access to the resources within the boundaries of this scope is granted to security principals (which take the form of users or applications) in Azure Active Directory. The degree of access is determined by the policies attached to the roles assigned to these security principals. The costs incurred by any Azure resources can be managed as a unit.
+A resource group in Azure is a container that holds Azure resources such as virtual machine instances, virtual networks, storage accounts, etc. It provides an accounting and security context for the life cycle of resources within its scope. Access to the resources within the boundaries of this scope is granted to security principals (which take the form of users or applications) in Azure Active Directory. The degree of access is determined by the policies attached to the roles assigned to these security principals. 
+
+Because resource groups comprise assets that should be managed together, they offer a convenient way to align the functionality provided by those resources to the costs that they incur.
+
+As an example, a resource group could contain the databases for an application in the productio environment. One could limit full access to these databases by assigning the `Owner` role to the users in the group of enterprise database administrators over the resource group. Furthermore, the total cost for running the databases for the applications in the production environment is reflected by the costs of the individual databases inside the resource group.
 
 Given its importance, a case can be made for an automated process that wraps sufficient business rules to enforce conformance in their creation.
 
@@ -9,10 +13,13 @@ Given its importance, a case can be made for an automated process that wraps suf
 
 This proposed solution adheres to the following design principles:
 
-1. Cloud automation should proceed bottom up. This automation should be derived from well understood operational pipelines. It should originate directly from the automation artifacts of the teams responsible for the creation and maintenance of resources in the cloud.
+1. Cloud automation should proceed bottom up. This automation should be derived from well understood and documented pipelines of business events. It should originate directly from the automation artifacts of the teams responsible for the creation and maintenance of resources in the cloud.
 2. Cloud automation should be reusable. This reusability should be accomplished by taking advantage of cloud native platform services to create an institutional API clearinghouse.
+3. Cloud automation should provide sufficient functionality to enable the performance of repetitive tasks against the cloud platform. Much of the benefit a public cloud obtains from its providing capability complementary to the an institution's investments in compute and infrastructure. Cloud automation should not wrap the access to the full capabilities of the platform. (Rather, it is the purpose of governance, design, security, identity, and financial controls to provide the structure for direct access to the features of the public cloud.)
 
-The institution has been adopting DevOps approaches and patterns of behavior. After a few months of manually creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets, the operations engineering team has observed coalescence around a set of well-defined inputs, processes, and outputs governed by business rules around the naming conventions and tagging of these resource groups.
+For several months, the operational infrastructure administrators have been creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets. The financial administrator for Azure resources has been monitoring and controlling costs by requiring that resources adhere to a specific naming convention and possess tags denoting the contact email of the owner, an institutional charging account identifier, application name, and the deployment environment. The information security oprations team requires that resources in Azure be identified with a data risk designation aligned to their security policies. This designation will be used to audit and monitor and control access.
+
+The institution has been adopting DevOps approaches and patterns of behavior. The operations engineering team has observed coalescence around a set of well-defined inputs, processes, and outputs governed by business rules around the naming conventions and tagging of these resource groups.
 
 They have refactored the Azure Resource Group templates and have begun to create a library of Powershell code snippets to reliably create appropriately named and tagged resource groups.
 
@@ -50,32 +57,40 @@ A resource group template that enforces business rules around naming and tagging
                 "Description": "Azure region. (NB, This value will override the `-Location` parameter specified by `New-AzDeployment` or  the `--location` option of `az deploy create`"
             }
         },
-        "OwnerNetId":  {
+        "OwnerSignInName": {
             "type": "string",
             "metadata": {
-                "description": "The network id of the functional owner of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "OwnerDepartment": {
-            "type": "string",
-            "metadata": {
-                "description": "The abbreviation for the department of the functional owner of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "OwnerDepartmentContact": {
-            "type": "string",
-            "metadata": {
-                "description": "The email address of the functional owner of the application or workload to be placed in Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.",
-                "comment": "Enterprise Resource Tag"
+                "description": "The Azure sign-in name (email address) of the functional owner of the resource group to be placed into Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.",
+                "comment": "Institutional Property"
             }
         },
         "ChargingAccount": {
             "type": "string",
             "metadata": {
                 "description": "The string denoting the account to which costs incurred by the application or workload to be placed in Azure should be charged.",
-                "comment": "Enterprise Resource Tag"
+                "comment": "Institutional Property"
+            }
+        },
+        "ApplicationName": {
+            "type": "string",
+            "metadata": {
+                "description": "A string that identifies the product or function of the application or workload to be placed into Azure.",
+                "comment": "Institutional Property"
+            }
+        },
+        "ApplicationBusinessUnit": {
+            "type": "string",
+            "metadata": {
+                "description": "A string that identifies the institutional business unit or academic department served by he product or function of the application to be placed into Azure",
+                "comment": "Institutional Property"
+            }            
+        },
+        "Environment": {
+            "type": "string",
+            "allowedValues": [ "dev", "test", "prod", "Dev", "Test", "Prod" ],
+            "metadata": {
+                "description": "The application or workload environment. Available values are dev, test and prod.",
+                "comment": "Institutional Property"
             }
         },
         "DataSensitivity": {
@@ -84,33 +99,19 @@ A resource group template that enforces business rules around naming and tagging
             "allowedValues": [ "High", "Moderate", "Low", "None", "high", "moderate", "low", "none" ],
             "metadata": {
                 "description": "A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "Environment": {
-            "type": "string",
-            "allowedValues": [ "dev", "test", "prod", "Dev", "Test", "Prod" ],
-            "metadata": {
-                "description": "The application or workload environment. Available values are dev, test and prod.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "Application": {
-            "type": "string",
-            "metadata": {
-                "description": "A string that identifies the product or function of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
+                "comment": "Institutional Property"
             }
         }
     },
     "variables": {
-        "resourceGroupName": "[concat(parameters('OwnerNetId'), '-', parameters('Application'), '-', parameters('Environment'), '-', parameters('OwnerDepartment'), '-', parameters('ResourceLocation'), '-rg')]",
+        "resourceGroupName": "[concat(parameters('ApplicationName'), '-', parameters('ApplicationBusinessUnit'), '-', parameters('Environment'), '-', parameters('ResourceLocation'), '-rg')]",
         "resourceLocation": "[parameters('ResourceLocation')]",
         "resourceTags": {
-            "ownerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
-            "dataSensitivity": "[parameters('DataSensitivity')]",
-            "chargingAccount": "[parameters('ChargingAccount')]",
-            "name": "[variables('resourceGroupName')]"
+            "Application": "[concat(parameters('ApplicationName'), '-', parameters('ApplicationBusinessUnit'))]",
+            "OwnerDepartmentContact": "[parameters('OwnerSignInName')]",
+            "DataSensitivity": "[parameters('DataSensitivity')]",
+            "ChargingAccount": "[parameters('ChargingAccount')]",
+            "Name": "[variables('resourceGroupName')]"
         }
     },
     "resources": [
@@ -156,15 +157,14 @@ $AZURE_DEPLOYMENT_LOCATION = '{{ DeploymentLocation }}'
 
 $AZURE_DEPLOYMENT_PARAMETERS = @{}
 
-$AZURE_DEPLOYMENT_PARAMETERS = @{
+  $AZURE_DEPLOYMENT_PARAMETERS = @{
     ResourceLocation         = '{{ ResourceLocation }}'
-    OwnerNetId               = '{{ OwnerNetId }}'
-    OwnerDepartment          = '{{ OwnerDepartment }}'
-    OwnerDepartmentContact   = '{{ OwnerDepartmentContact }}'
+    OwnerSignInName          = '{{ OwnerSignInName }}'
     ChargingAccount          = '{{ ChargingAccount }}'
-    DataSensitivity          = '{{ DataSensitivity }}'
+    ApplicationName          = '{{ ApplicationName }}'
+    ApplicationBusinessUnit  = '{{ ApplicationBusinessUnit }}'
     Environment              = '{{ Environment }}'
-    Application              = '{{ Application }}'
+    DataSensitivity          = '{{ DataSensitivity }}'
 }
 
 
