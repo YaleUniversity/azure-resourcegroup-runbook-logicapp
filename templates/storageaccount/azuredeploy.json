@@ -10,6 +10,59 @@
     },
 
     "parameters": {
+        "ResourceLocation": {
+            "type": "string",
+            "metadata": {
+                "Description": "Azure region. (NB, This value will override the `-Location` parameter specified by `New-AzDeployment` or  the `--location` option of `az deploy create`"
+            }
+        },
+        "OwnerSignInName": {
+            "type": "string",
+            "defaultValue": "inherited",
+            "metadata": {
+                "description": "The Azure sign-in name (email address) of the functional owner of the resource group to be placed into Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.",
+                "comment": "Institutional Property"
+            }
+        },
+        "ChargingAccount": {
+            "type": "string",
+            "defaultValue": "inherited",
+            "metadata": {
+                "description": "The string denoting the account to which costs incurred by the application or workload to be placed in Azure should be charged.",
+                "comment": "Institutional Property"
+            }
+        },
+        "ApplicationName": {
+            "type": "string",
+            "metadata": {
+                "description": "A string that identifies the product or function of the application or workload to be placed into Azure.",
+                "comment": "Institutional Property"
+            }
+        },
+        "ApplicationBusinessUnit": {
+            "type": "string",
+            "metadata": {
+                "description": "A string that identifies the institutional business unit or academic department served by he product or function of the application to be placed into Azure",
+                "comment": "Institutional Property"
+            }            
+        },
+        "Environment": {
+            "type": "string",
+            "allowedValues": [ "dev", "test", "prod", "Dev", "Test", "Prod" ],
+            "metadata": {
+                "description": "The application or workload environment. Available values are dev, test and prod.",
+                "comment": "Institutional Property"
+            }
+        },
+        "DataSensitivity": {
+            "type": "string",
+            "defaultValue": "none",
+            "allowedValues": [ "High", "Moderate", "Low", "None", "high", "moderate", "low", "none" ],
+            "metadata": {
+                "description": "A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).",
+                "comment": "Institutional Property"
+            }
+        },
         "SkuName" : { 
             "type": "string",
             "allowedValues": [ "Standard_LRS", "Standard_GRS", "Standard_RAGRS", "Standard_ZRS", "Premium_LRS" ],
@@ -40,79 +93,25 @@
             "metadata": {
                 "description": "A custom domain name may be assigned to this storage account's endpoint. Cf, https://docs.microsoft.com/en-us/azure/storage/blobs/storage-custom-domain-name"
             }
-        },
-        "ResourceLocation": {
-            "type": "string",
-            "defaultValue": "",
-            "metadata": {"Description": "Azure region. (NB, This value will override the `-Location` parameter specified by `New-AzDeployment` or  the `--location` option of `az deploy create`"}
-        },
-        "OwnerNetId":  {
-            "type": "string",
-            "metadata": {
-                "description": "The network id of the functional owner of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "OwnerDepartment": {
-            "type": "string",
-            "metadata": {
-                "description": "The abbreviation for the department of the functional owner of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "OwnerDepartmentContact": {
-            "type": "string",
-            "metadata": {
-                "description": "The email address of the functional owner of the application or workload to be placed in Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "ChargingAccount": {
-            "type": "string",
-            "metadata": {
-                "description": "The string denoting the account to which costs incurred by the application or workload to be placed in Azure should be charged.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "DataSensitivity": {
-            "type": "string",
-            "defaultValue": "none",
-            "allowedValues": [ "High", "Moderate", "Low", "None", "high", "moderate", "low", "none" ],
-            "metadata": {
-                "description": "A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "Environment": {
-            "type": "string",
-            "allowedValues": [ "dev", "test", "prod", "Dev", "Test", "Prod" ],
-            "metadata": {
-                "description": "The application or workload environment. Available values are dev, test and prod.",
-                "comment": "Enterprise Resource Tag"
-            }
-        },
-        "Application": {
-            "type": "string",
-            "metadata": {
-                "description": "A string that identifies the product or function of the application or workload to be placed in Azure.",
-                "comment": "Enterprise Resource Tag"
-            }
         }
     },
 
     "variables": {
-        "baseString": "[concat(parameters('OwnerNetId'), '-', parameters('Application'), '-', parameters('Environment'), '-', parameters('OwnerDepartment'), '-storage')]",
+        "baseString": "[concat(parameters('ApplicationName'), '-', parameters('ApplicationBusinessUnit'), '-', parameters('Environment'), '-', parameters('ResourceLocation'))]",
+        "resourceGroupName": "[concat(parameters('ApplicationName'), '-', parameters('ApplicationBusinessUnit'), '-', parameters('Environment'), '-', parameters('ResourceLocation'), '-rg')]",
         "resourceLocation": "[if(equals(parameters('ResourceLocation'), ''), resourceGroup().location, parameters('ResourceLocation'))]",
-        "storageAccount": "[concat('yale', uniqueString(variables('baseString')))]",
+        "name": "[concat(variables('baseString'), '-storage')]",
+        "storageAccount": "[concat('yale', uniqueString(variables('name')))]",
         "skuName": "[parameters('SkuName')]",
         "accountKind": "[parameters('AccountKind')]",
         "accessTierDefault": "[parameters('AccessTierDefault')]",
         "customDomain": "[parameters('customDomain')]",
-        "resourceTags": {
-            "OwnerDepartmentContact": "[parameters('OwnerDepartmentContact')]",
+        "resourceGroupTags": "[resourceGroup().tags]",
+        "storageAccountTags": {
+            "OwnerDepartmentContact": "[if(equals(parameters('OwnerSignInName'), 'inherited'), resourceGroup().tags.OwnerDepartmentContact, parameters('OwnerSignInName'))]",
             "DataSensitivity": "[parameters('DataSensitivity')]",
-            "ChargingAccount": "[parameters('ChargingAccount')]",
-            "Name": "[variables('baseString')]"
+            "ChargingAccount": "[if(equals(parameters('ChargingAccount'), 'inherited'), resourceGroup().tags.ChargingAccount, parameters('ChargingAccount'))]",
+            "Name": "[variables('name')]"
         }
     },
 
@@ -138,9 +137,10 @@
             "supportsHttpsTrafficOnly": true
         },
 
-        "tags": "[variables('resourceTags')]"
+        "tags": "[variables('storageAccountTags')]"
     }  
     ],
+    
     "outputs": { 
         "storageAccountName": {
             "type": "string",
@@ -152,7 +152,11 @@
         },
         "tags": {
             "type": "object",
-            "value": "[variables('resourceTags')]"
+            "value": "[variables('storageAccountTags')]"
+        },
+        "resourceGroupTags": {
+            "type": "object",
+            "value": "[variables('resourceGroupTags')]"
         }
-    } 
+    }
 }
