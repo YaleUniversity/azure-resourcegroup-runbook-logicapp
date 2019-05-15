@@ -42,6 +42,7 @@ $DEPLOYMENT_PARAMETERS = @{
 
 $TEMP = $(New-TemporaryFile).DirectoryName
 $AZURE_STORAGE_ACCOUNT = Get-AutomationVariable -Name 'AZURE_STORAGE_ACCOUNT'
+$AZURE_STORAGE_KEY = Get-AutomationVariable -Name 'AZURE_STORAGE_KEY'
 $AZURE_STORAGE_ACCOUNT_RESOURCEGROUP = Get-AutomationVariable -NAME 'AZURE_STORAGE_ACCOUNT_RESOURCEGROUP'
 $AZURE_STORAGE_CONTAINER = Get-AutomationVariable -NAME 'AZURE_STORAGE_CONTAINER'
 $AZURE_TEMPLATE_BLOB = Get-AutomationVariable -NAME 'AZURE_TEMPLATE_BLOB'
@@ -50,14 +51,30 @@ $connectionName = "AzureRunAsConnection"
 
 $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName
 
+# Connect to Azure AD and obtain an authorized context to access directory information regarding owner
+# and (in the future) access a blob storage container without a SAS token or storage account key
+
 Add-AzAccount -ServicePrincipal `
               -TenantId $servicePrincipalConnection.TenantId `
               -ApplicationId $servicePrincipalConnection.ApplicationId `
               -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint
 
-# Storage Blob Container should be configured to use AAD authentication (preview)
+$userObjectId = $(Get-AzAdUser -UPN $DEPLOYMENT_PARAMETERS.OwnerDepartmentContact).Id
+
+<#
+# This obtains a storage context based on the AZ credentials of Azure Runas Account
+# AAD access of Storage Blob Containers is in preview mode.
+# Allowing AAD access of Storage Blob Containers can only be set in the portal and
+# `az-cli`. Powershell and ARM templates does not support this setting yet.
+
 $storageContext = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
                                        -UseConnectedAccount
+#>
+
+# Obtain storage context
+
+$storageContext = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
+                                       -StorageAccountKey "$AZURE_STORAGE_KEY"
 
 $blob = Get-AzStorageBlobContent -Context $storageContext `
                          -Container "$AZURE_STORAGE_CONTAINER" `
@@ -71,19 +88,12 @@ $deploymentName = "$OwnerNetId-$(Get-Date -Format 'yyMMddHHmmm')-deployment"
 $deployment = New-AzDeployment -Name $deploymentName `
                                -Location $ResourceLocation `
                                -TemplateFile "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" `
-                               -TemplateParameterObject $DEPLOYMENT_PARAMETERS `
-                               -WhatIf
+                               -TemplateParameterObject $DEPLOYMENT_PARAMETERS
+
 $deployment
 
-# Return Context of user account
-Get-AzContext
+$DEPLOYMENT_PARAMETERS.OwnerDepartmentContact
 
-<#
-TODO: Assign the Owner or Contributor to the newly created resource group.
-
-**HOWEVER**, the RunasAutomationAccount cannot read AAD to retreieve the ADUser associated
-with the provided email/SignOnName.
-
-As a test,
-Get-AzADUser -UPN first.last@{{ domain name}} returns nothing.
-#>
+New-AzRoleAssignment -SignInName $DEPLOYMENT_PARAMETERS.OwnerDepartmentContact `
+                     -ResourceGroupName $deployment.Outputs.resourceGroupName.Value `
+                     -RoleDefinitionName 'Contributor'
