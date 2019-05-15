@@ -345,9 +345,9 @@ New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
 
 ## Create Azure Logic App, HTTP Trigger
 
-An Azure Runbook allows an operations team to reuse automation code. It provides a container and runtime environment for the code. By exposing parameters of a Python 2 or Powershell script,it provides a convenient, lightweight user interface for operational tasks.
+An Azure Runbook allows an operations team to reuse automation code. By exposing the parameters of a Python 2 or Powershell script,it provides a convenient, lightweight user interface for operational tasks.
 
-Azure Logic Apps enables the creation of automation workflows that can integrate data, events, conditions, and applications within Azure Azure, private clouds, and other public cloud platforms.
+Azure Logic Apps enables the creation of automation workflows that can integrate data, events, conditions, and applications within Azure Azure, private clouds, and also other public cloud platforms.
 
 In this solution, a simple workflow is triggered by an HTTP request that is carrying a JSON payload of data collected by a self-service web application. The payload contains a user id, , department, contact email, charging code, environment, data security sensitivty level, and application name. The Logic App workflow de-serializes the JSON payload and furnishes them as inputs to Azure runbook. When the Azure Runbook completes, Logic Apps returns an HTTP response with the results of the runbook action serialized as JSON.
 
