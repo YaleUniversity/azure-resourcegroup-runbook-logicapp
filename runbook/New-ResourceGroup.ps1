@@ -4,40 +4,37 @@ param(
     [Parameter(Mandatory=$True,HelpMessage='Azure Region to which this resource will be deployed.')]
     [string] $ResourceLocation,
 
-    [Parameter(Mandatory=$True,HelpMessage='The network id of the functional owner of the application or workload to be placed in Azure.')]
-    [string] $OwnerNetId,
-
-    [Parameter(Mandatory=$True,HelpMessage='The abbreviation for the department of the functional owner of the application or workload to be placed in Azure.')]
-    [string] $OwnerDepartment,
-
-    [Parameter(Mandatory=$True,HelpMessage='The email address of the functional owner of the application or workload to be placed in Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.')]
-    [string] $OwnerDepartmentContact,
+    [Parameter(Mandatory=$True,HelpMessage='The Azure sign-in name (email address) of the functional owner of the resource group to be placed into Azure. The person to be notified of changes or interruptions to the operations of their application or workload in Azure.')]
+    [string] $OwnerSignInName,
 
     [Parameter(Mandatory=$True,HelpMessage='The string denoting the account to which costs incurred by the application or workload to be placed in Azure should be charged.')]
     [string] $ChargingAccount,
 
-    [Parameter(Mandatory=$True,HelpMessage='A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).')]
-    [ValidateSet('High', 'Moderate', 'Low', 'None', 'high', 'moderate', 'low', 'none')]
-    [string] $DataSensitivity,
+    [Parameter(Mandatory=$True,HelpMessage='A string that identifies the product or function of the application or workload to be placed into Azure.')]
+    [string] $ApplicationName,
+    
+    [Parameter(Mandatory=$True,HelpMessage='A string that identifies the institutional business unit or academic department served by he product or function of the application to be placed into Azure.')]
+    [string] $ApplicationBusinessUnit,
 
     [Parameter(Mandatory=$True,HelpMessage='The application or workload environment. Available values are dev, test and prod.')]
     [ValidateSet('dev', 'test', 'prod', 'Dev', 'Test', 'Prod')]
     [string] $Environment,
 
-    [Parameter(Mandatory=$True,HelpMessage='A string that identifies the product or function of the application or workload to be placed in Azure.')]
-    [string] $Application
+    [Parameter(Mandatory=$True,HelpMessage='A string that denotes the degree of risk and impact to the institution should data handled by the resource be disclosed outside of the institution [ref](https://cybersecurity.yale.edu/classifyingtechnology).')]
+    [ValidateSet('High', 'Moderate', 'Low', 'None', 'high', 'moderate', 'low', 'none')]
+    [string] $DataSensitivity
+
 )
 
 $DEPLOYMENT_PARAMETERS = @{}
 $DEPLOYMENT_PARAMETERS = @{
-    ResourceLocation         = $ResourceLocation
-    OwnerNetId               = $OwnerNetId
-    OwnerDepartment          = $OwnerDepartment
-    OwnerDepartmentContact   = $OwnerDepartmentContact
-    ChargingAccount          = $ChargingAccount
-    DataSensitivity          = $DataSensitivity
-    Environment              = $Environment
-    Application              = $Application
+    ResourceLocation        = $ResourceLocation
+    OwnerSignInName         = $OwnerSignInName
+    ChargingAccount         = $ChargingAccount
+    DataSensitivity         = $DataSensitivity
+    Environment             = $Environment
+    ApplicationName         = $ApplicationName
+    ApplicationBusinessUnit = $ApplicationBusinessUnit
 }
 
 $TEMP = $(New-TemporaryFile).DirectoryName
@@ -59,7 +56,7 @@ Add-AzAccount -ServicePrincipal `
               -ApplicationId $servicePrincipalConnection.ApplicationId `
               -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint
 
-$userObjectId = $(Get-AzAdUser -UPN $DEPLOYMENT_PARAMETERS.OwnerDepartmentContact).Id
+$userObjectId = $(Get-AzAdUser -UPN $DEPLOYMENT_PARAMETERS.OwnerSignInName).Id
 
 <#
 # This obtains a storage context based on the AZ credentials of Azure Runas Account
@@ -92,8 +89,8 @@ $deployment = New-AzDeployment -Name $deploymentName `
 
 $deployment
 
-$DEPLOYMENT_PARAMETERS.OwnerDepartmentContact
+$DEPLOYMENT_PARAMETERS.OwnerSignInName
 
-New-AzRoleAssignment -SignInName $DEPLOYMENT_PARAMETERS.OwnerDepartmentContact `
+New-AzRoleAssignment -SignInName $DEPLOYMENT_PARAMETERS.OwnerSignInName `
                      -ResourceGroupName $deployment.Outputs.resourceGroupName.Value `
                      -RoleDefinitionName 'Contributor'
