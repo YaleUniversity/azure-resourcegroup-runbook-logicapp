@@ -77,8 +77,8 @@ $AZURE_DEPLOYMENT_NAME = "$OwnerNetId-$(Get-Date -Format 'yyMMddHHmmm')-deployme
                                      -TemplateFile "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" `
                                      -TemplateParameterObject $AZUREDEPLOY_PARAMETERS) 3>&1 2>&1 > $null
 
-(New-AzRoleAssignment -SignInName $AZUREDEPLOY_PARAMETERS.OwnerSignInName `
-                     -ResourceGroupName $AZURE_DEPLOYMENT.Outputs.resourceGroupName.Value `
-                     -RoleDefinitionName 'Contributor') 3>&1 2>&1 > $null
+($AZURE_ROLEASSIGNMENT = New-AzRoleAssignment -SignInName $AZUREDEPLOY_PARAMETERS.OwnerSignInName `
+                                              -ResourceGroupName $AZURE_DEPLOYMENT.Outputs.resourceGroupName.Value `
+                                              -RoleDefinitionName 'Contributor') 3>&1 2>&1 > $null
 
 Write-Output ( $AZURE_DEPLOYMENT.Outputs | ConvertTo-Json )
