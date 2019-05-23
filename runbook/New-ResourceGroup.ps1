@@ -56,16 +56,6 @@ Add-AzAccount -ServicePrincipal `
               -ApplicationId $servicePrincipalConnection.ApplicationId `
               -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint
 
-<#
-# This obtains a storage context based on the AZ credentials of Azure Runas Account
-# AAD access of Storage Blob Containers is in preview mode.
-# Allowing AAD access of Storage Blob Containers can only be set in the portal and
-# `az-cli`. Powershell and ARM templates does not support this setting yet.
-
-$AZURE_STORAGE_CONTEXT = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
-                                       -UseConnectedAccount
-#>
-
 # Obtain storage context
 
 ($AZURE_STORAGE_CONTEXT = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
@@ -77,7 +67,9 @@ $AZURE_STORAGE_CONTEXT = New-AzStorageContext -StorageAccountName "$AZURE_STORAG
                          -Destination "$TEMP" `
                          -Force) 3>&1 2>&1 > $null
 
-#$azuredeployTemplate = Get-Content -Path "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" -Encoding UTF8
+<#
+TODO: Use AAD to create storage context. This feature is preview currently (2019-05-22). See commit (ad900b1) message for notes.
+#>
 
 $AZURE_DEPLOYMENT_NAME = "$OwnerNetId-$(Get-Date -Format 'yyMMddHHmmm')-deployment"
 ($AZURE_DEPLOYMENT = New-AzDeployment -Name $AZURE_DEPLOYMENT_NAME `
