@@ -26,8 +26,8 @@ param(
 
 )
 
-$DEPLOYMENT_PARAMETERS = @{}
-$DEPLOYMENT_PARAMETERS = @{
+$AZUREDEPLOY_PARAMETERS = @{}
+$AZUREDEPLOY_PARAMETERS = @{
     ResourceLocation        = $ResourceLocation
     OwnerSignInName         = $OwnerSignInName
     ChargingAccount         = $ChargingAccount
@@ -56,41 +56,37 @@ Add-AzAccount -ServicePrincipal `
               -ApplicationId $servicePrincipalConnection.ApplicationId `
               -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint
 
-$userObjectId = $(Get-AzAdUser -UPN $DEPLOYMENT_PARAMETERS.OwnerSignInName).Id
-
 <#
 # This obtains a storage context based on the AZ credentials of Azure Runas Account
 # AAD access of Storage Blob Containers is in preview mode.
 # Allowing AAD access of Storage Blob Containers can only be set in the portal and
 # `az-cli`. Powershell and ARM templates does not support this setting yet.
 
-$storageContext = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
+$AZURE_STORAGE_CONTEXT = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
                                        -UseConnectedAccount
 #>
 
 # Obtain storage context
 
-$storageContext = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
-                                       -StorageAccountKey "$AZURE_STORAGE_KEY"
+($AZURE_STORAGE_CONTEXT = New-AzStorageContext -StorageAccountName "$AZURE_STORAGE_ACCOUNT" `
+                                              -StorageAccountKey "$AZURE_STORAGE_KEY") 3>&1 2>&1 > $null
 
-$blob = Get-AzStorageBlobContent -Context $storageContext `
+(Get-AzStorageBlobContent -Context $AZURE_STORAGE_CONTEXT `
                          -Container "$AZURE_STORAGE_CONTAINER" `
                          -Blob "$AZURE_TEMPLATE_BLOB" `
                          -Destination "$TEMP" `
-                         -Force
+                         -Force) 3>&1 2>&1 > $null
 
-$azuredeployTemplate = Get-Content -Path "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" -Encoding UTF8
+#$azuredeployTemplate = Get-Content -Path "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" -Encoding UTF8
 
-$deploymentName = "$OwnerNetId-$(Get-Date -Format 'yyMMddHHmmm')-deployment"
-$deployment = New-AzDeployment -Name $deploymentName `
-                               -Location $ResourceLocation `
-                               -TemplateFile "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" `
-                               -TemplateParameterObject $DEPLOYMENT_PARAMETERS
+$AZURE_DEPLOYMENT_NAME = "$OwnerNetId-$(Get-Date -Format 'yyMMddHHmmm')-deployment"
+($AZURE_DEPLOYMENT = New-AzDeployment -Name $AZURE_DEPLOYMENT_NAME `
+                                     -Location $AZUREDEPLOY_PARAMETERS.ResourceLocation `
+                                     -TemplateFile "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" `
+                                     -TemplateParameterObject $AZUREDEPLOY_PARAMETERS) 3>&1 2>&1 > $null
 
-$deployment
+(New-AzRoleAssignment -SignInName $AZUREDEPLOY_PARAMETERS.OwnerSignInName `
+                     -ResourceGroupName $AZURE_DEPLOYMENT.Outputs.resourceGroupName.Value `
+                     -RoleDefinitionName 'Contributor') 3>&1 2>&1 > $null
 
-$DEPLOYMENT_PARAMETERS.OwnerSignInName
-
-New-AzRoleAssignment -SignInName $DEPLOYMENT_PARAMETERS.OwnerSignInName `
-                     -ResourceGroupName $deployment.Outputs.resourceGroupName.Value `
-                     -RoleDefinitionName 'Contributor'
+Write-Output ( $AZURE_DEPLOYMENT.Outputs | ConvertTo-Json )
