@@ -73,12 +73,27 @@ TODO: Use AAD to create storage context. This feature is preview currently (2019
 
 $AZURE_DEPLOYMENT_NAME = "$OwnerNetId-$(Get-Date -Format 'yyMMddHHmmm')-deployment"
 ($AZURE_DEPLOYMENT = New-AzDeployment -Name $AZURE_DEPLOYMENT_NAME `
-                                     -Location $AZUREDEPLOY_PARAMETERS.ResourceLocation `
-                                     -TemplateFile "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" `
-                                     -TemplateParameterObject $AZUREDEPLOY_PARAMETERS) 3>&1 2>&1 > $null
+                                      -Location $AZUREDEPLOY_PARAMETERS.ResourceLocation `
+                                      -TemplateFile "$(Join-Path $TEMP $AZURE_TEMPLATE_BLOB)" `
+                                      -TemplateParameterObject $AZUREDEPLOY_PARAMETERS) 3>&1 2>&1 > $null
+
+$resourceGroupName = ($AZURE_DEPLOYMENT.outputs.resourceId.value).Split('/')[-1]
+$resourceGroupTags = (Get-AzResourceGroup -Name $resourceGroupName).Tags
 
 ($AZURE_ROLEASSIGNMENT = New-AzRoleAssignment -SignInName $AZUREDEPLOY_PARAMETERS.OwnerSignInName `
                                               -ResourceGroupName $AZURE_DEPLOYMENT.Outputs.resourceGroupName.Value `
                                               -RoleDefinitionName 'Contributor') 3>&1 2>&1 > $null
 
-Write-Output ( $AZURE_DEPLOYMENT.Outputs | ConvertTo-Json )
+$AZURE_RUNBOOK_OUTPUT = @{}
+
+$AZURE_RUNBOOK_OUTPUT = @{
+    ResourceGroupName = $resourceGroupName
+    ResourceId = $AZURE_DEPLOYMENT.outputs.resourceId.value
+    Tags = $resourceGroupTags
+    RoleAssignment = @{
+        User = $AZURE_ROLEASSIGNMENT.DisplayName
+        Role = $AZURE_ROLEASSIGNMENT.RoleDefinitionName
+    }
+}
+
+Write-Output ( $AZURE_RUNBOOK_OUTPUT | ConvertTo-Json )
