@@ -351,6 +351,36 @@ Azure Logic Apps enables the creation of automation workflows that can integrate
 
 In this solution, a simple workflow is triggered by an HTTP request that is carrying a JSON payload of data collected by a self-service web application. The payload contains a user id, , department, contact email, charging code, environment, data security sensitivty level, and application name. The Logic App workflow de-serializes the JSON payload and furnishes them as inputs to Azure runbook. When the Azure Runbook completes, Logic Apps returns an HTTP response with the results of the runbook action serialized as JSON.
 
+An Azure Active Directory service principal assigned with
+
+```powershell
+
+# Use Python3 secrets module to create a random password. There are likely pure Powershell ways to do this.
+$AZURE_LOGICAPP_API_SP_PASSWORD=$(python3 -c "import secrets; print(secrets.token_urlsafe(16))")
+
+Write-Output $("Please take note of the following plaintext password: {0}" -f $AZURE_LOGICAPP_API_SP_PASSWORD)
+
+# Use plain text password to create a new credential object with a 1 year expiry
+$credentials = New-Object Microsoft.Azure.Commands.ActiveDirectory.PSADPasswordCredential `
+                            -Property @{ StartDate=Get-Date; EndDate=Get-Date -Year 2020; Password="$AZURE_LOGICAPP_API_SP_PASSWORD"}
+
+# Create new service principal
+$AZURE_LOGICAPP_API_SP = New-AzADServicePrincipal -DisplayName 'resourcegroups-la-sp' `
+                                                  -PasswordCredential $credentials
+
+# Assign the appropriate roles to allow the service principal to create jobs from the New-ResourceGroup runbook.
+
+New-AzRoleAssignment -ApplicationId $AZURE_LOGICAPP_API_SP.ApplicationId.Guid `
+                     -RoleDefinitionName 'Automation Runbook Operator' `
+                     -Scope $('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Automation/automationAccounts/{2}/runbooks/New-ResourceGroup' `
+                                -f $AZURE_SUBSCRIPTION_ID, $AZURE_RESOURCE_GROUP, $AZURE_AUTOMATION_ACCOUNT_NAME)
+
+New-AzRoleAssignment -ApplicationId $AZURE_LOGICAPP_API_SP.ApplicationId.Guid `
+                     -RoleDefinitionName 'Automation Job Operator' `
+                     -Scope $('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Automation/automationAccounts/{2}' `
+                                -f $AZURE_SUBSCRIPTION_ID, $AZURE_RESOURCE_GROUP, $AZURE_AUTOMATION_ACCOUNT_NAME)
+```
+
 ## Test Solution
 ```bash
 curl "$AZURE_LOGICAPP_HTTP_ENDPOINT"-H 'Content-Type: application/json' -d "${JSON_PAYLOAD}"`
