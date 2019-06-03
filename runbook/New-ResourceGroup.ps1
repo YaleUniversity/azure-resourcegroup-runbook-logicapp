@@ -46,15 +46,31 @@ $AZURE_TEMPLATE_BLOB = Get-AutomationVariable -NAME 'AZURE_TEMPLATE_BLOB'
 
 $connectionName = "AzureRunAsConnection"
 
-$servicePrincipalConnection = Get-AutomationConnection -Name $connectionName
+try
+{
+    $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName
 
-# Connect to Azure AD and obtain an authorized context to access directory information regarding owner
-# and (in the future) access a blob storage container without a SAS token or storage account key
+    # Connect to Azure AD and obtain an authorized context to access directory information regarding owner
+    # and (in the future) access a blob storage container without a SAS token or storage account key
 
-Add-AzAccount -ServicePrincipal `
-              -TenantId $servicePrincipalConnection.TenantId `
-              -ApplicationId $servicePrincipalConnection.ApplicationId `
-              -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint
+    Add-AzAccount -ServicePrincipal `
+                  -TenantId $servicePrincipalConnection.TenantId `
+                  -ApplicationId $servicePrincipalConnection.ApplicationId `
+                  -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint 3>&1 2>&1 > $null
+}
+catch
+{
+    if (!$servicePrincipalConnection)
+    {
+        $ErrorMessage = "Connection $connectionName not found."
+        throw $ErrorMessage
+    } 
+    else
+    {
+        Write-Error -Message $_.Exception
+        throw $_.Exception
+    }
+}
 
 # Obtain storage context
 
@@ -86,7 +102,7 @@ $resourceGroupTags = (Get-AzResourceGroup -Name $resourceGroupName).Tags
 
 $AZURE_RUNBOOK_OUTPUT = @{}
 
-$AZURE_RUNBOOK_OUTPUT = @{
+$AZURE_RUNBOOK_OUTPUT = [PSCustomObject] @{
     ResourceGroupName = $resourceGroupName
     ResourceId = $AZURE_DEPLOYMENT.outputs.resourceId.value
     Tags = $resourceGroupTags
