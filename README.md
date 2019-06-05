@@ -1,33 +1,35 @@
 # Creation of Azure Resource Groups through Serverless Automation
 
 ## Introduction
-A resource group in Azure is a container that holds Azure resources such as virtual machine instances, virtual networks, storage accounts, etc. It provides an accounting and security context for the life cycle of resources within its scope. Access to the resources within the boundaries of this scope is granted to security principals (which take the form of users or applications) in Azure Active Directory. The degree of access is determined by the policies attached to the roles assigned to these security principals. 
+A resource group in Azure is a logical container. It holds Azure resources such as virtual machine instances, virtual networks, storage accounts, etc. It provides an accounting and security context for the life time of the resources contained within its scope. Access to the resources inside its scope is granted to authenticated Azure security principals (which take the form of Azure Active Directory users or applications). The authorization is determined by the policies attached to the roles assigned to these security principals. 
 
-Because resource groups comprise assets that should be managed together, they offer a convenient way to align the functionality provided by those resources to the costs that they incur.
+Resource groups comprise assets that should be managed together. They offer a convenient way to align the value and functionality provided by those resources to the costs that they incur. The finanancial cost incurred by an application or service and its components can be tracked by their resource group.
 
-As an example, a resource group could contain the databases for an application in the productio environment. One could limit full access to these databases by assigning the `Owner` role to the users in the group of enterprise database administrators over the resource group. Furthermore, the total cost for running the databases for the applications in the production environment is reflected by the costs of the individual databases inside the resource group.
+As an example, a resource group could contain the databases for an application in the production environment. An Azure administrator could limit full access to these databases by assigning the `Owner` role to the users in the group of enterprise database administrators over the resource group. Furthermore, the total cost for running the databases for the applications in the production environment is reflected by the costs of the individual databases inside the resource group.
 
-Given its importance, a case can be made for an automated process that wraps sufficient business rules to enforce conformance in their creation.
+Given its importance, a case can be made for an automated process that wraps business rules to enforce conformance in their creation.
 
 ## Description of Solution
 
 This proposed solution adheres to the following design principles:
 
-1. Cloud automation should proceed bottom up. This automation should be derived from well understood and documented pipelines of business events. It should originate directly from the automation artifacts of the teams responsible for the creation and maintenance of resources in the cloud.
+1. Cloud automation should proceed bottom up. Automation should be derived from well understood and documented pipelines of business events. It should originate directly from the automation artifacts of the teams responsible for the creation and maintenance of resources in the cloud.
+
 2. Cloud automation should be reusable. This reusability should be accomplished by taking advantage of cloud native platform services to create an institutional API clearinghouse.
+
 3. Cloud automation should provide sufficient functionality to enable the performance of repetitive tasks against the cloud platform. Much of the benefit a public cloud obtains from its providing capability complementary to the an institution's investments in compute and infrastructure. Cloud automation should not wrap the access to the full capabilities of the platform. (Rather, it is the purpose of governance, design, security, identity, and financial controls to provide the structure for direct access to the features of the public cloud.)
 
-For several months, the operational infrastructure administrators have been creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets. The financial administrator for Azure resources has been monitoring and controlling costs by requiring that resources adhere to a specific naming convention and possess tags denoting the contact email of the owner, an institutional charging account identifier, application name, and the deployment environment. The information security oprations team requires that resources in Azure be identified with a data risk designation aligned to their security policies. This designation will be used to audit and monitor and control access.
+For several months, the operational infrastructure administrators have been creating and tagging resource groups through direct access of the Azure portal as well as the Powershell `Az` commandlets. The financial administrator for Azure resources has been monitoring and controlling costs by requiring that resources adhere to a specific naming convention and possess tags denoting the contact email of the owner, an institutional charging account identifier, application name, and the deployment environment. The information security oprations team requires that resources in Azure be identified with a data risk designation aligned to their security policies. This designation will be used to monitor, audit, and control access.
 
 The institution has been adopting DevOps approaches and patterns of behavior. The operations engineering team has observed coalescence around a set of well-defined inputs, processes, and outputs governed by business rules around the naming conventions and tagging of these resource groups.
 
 They have refactored the Azure Resource Group templates and have begun to create a library of Powershell code snippets to reliably create appropriately named and tagged resource groups.
 
-The operational team has has been maintaining and storing this library in a common repository. They invoke the code interactively to create resource groups that conform to naming and resource tagging conventions.
+The operational team has has been maintaining and storing this library in a common code repository. They invoke the code interactively to create resource groups that conform to naming and resource tagging conventions.
 
 However, another team has created a self-service portal that allows members of the institution to create resources in multiple public and private clouds through REST API calls against cloud platform endpoints. This team would like to bring Azure within the portfolio of services available through their tool. They would like to leverage the operational team's Azure automation library.
 
-Azure provides many options to facilitate the reusability of automation.  [TODO: Discuss serverless and event driven implementations in Azure.] This solution takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation, and Logic Apps to provide a lightweight API endpoint to trigger the Runbook and return an HTTP response with the results of the action.
+Azure provides many options to facilitate the reusability of automation.  [TODO: Discuss serverless and event driven implementations in Azure.] The solution proposed here takes advantage of Azure Blob Storage to store Azure Resource Manager templates, Azure Automation Runbooks to host the PowerShell automation that creates resource groups, and Azure Logic Apps. The last item is an Azure service implements the workflow to create the resource group by providing a lightweight API trigger endpoint, actions to execute automation tasks,and a HTTP response with the results of the action.
 
 ![ResourceGroupLogicAppArchitecture](assets/ResourceGroupLogicAppArchitecture.svg)
 
@@ -314,7 +316,7 @@ $AZURE_AUTOMATION_MODULES = @(
 ) | % {Find-Module -Name $_ -Repository PSGallery}
 
 
-# TODO: Aa.Accounts must be imported successfully first; otherwise subsequet Az.* module imports fail.
+# TODO: Az.Accounts must be imported successfully first; otherwise subsequet Az.* module imports fail.
 # Create polling loop before importing Az.Resources and Az.Storage.
 
 $AZURE_AUTOMATION_MODULES | % {
@@ -331,27 +333,29 @@ Import-AzAutomationRunbook -Path .\runbook\New-ResourceGroup.ps1 `
 
 ```
 
-In order for the automation account to access the storage blob, the `Azure Storage Blob Reader` role must be assigned to it. Returning to PowerShell:
-
-```powershell
-
-$AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId.Guid
-$AZURE_STORAGE_ROLE_SCOPE = $('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Storage/storageAccounts/{2}/blobServices/default/containers/{3}' -f $AZURE_SUBSCRIPTION_ID, $AZURE_RESOURCE_GROUP, $AZURE_STORAGE_ACCOUNT, 'templates')
-
-New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
-    -RoleDefinitionName "Storage Blob Data Reader" `
-    -Scope  "$AZURE_STORAGE_ROLE_SCOPE"
-```
-
-## Create Azure Logic App, HTTP Trigger
+### Create Azure Logic App, HTTP Trigger
 
 An Azure Runbook allows an operations team to reuse automation code. By exposing the parameters of a Python 2 or Powershell script,it provides a convenient, lightweight user interface for operational tasks.
 
-Azure Logic Apps enables the creation of automation workflows that can integrate data, events, conditions, and applications within Azure Azure, private clouds, and also other public cloud platforms.
+Azure Logic Apps is an integration solution that enables the creation of automation workflows. These workflows can integrate data, events, conditions, and applications within Azure, other public clouds, and institutional private clouds.
 
-In this solution, a simple workflow is triggered by an HTTP request that is carrying a JSON payload of data collected by a self-service web application. The payload contains a user id, , department, contact email, charging code, environment, data security sensitivty level, and application name. The Logic App workflow de-serializes the JSON payload and furnishes them as inputs to Azure runbook. When the Azure Runbook completes, Logic Apps returns an HTTP response with the results of the runbook action serialized as JSON.
+In this case, a simple workflow is triggered by an HTTP request carrying a JSON payload. This payload comprises the following information collected by a self-service web application:
 
-An Azure Active Directory service principal assigned with
+* The name of the application
+* The Office 365 email address/sign in name of the functional owner of the application
+* An institutional charge back code
+* The environment for application
+* The security sensitivity level assigned to the data handled or held by the Azure resources in the resource group
+
+The Logic App workflow de-serializes the JSON payload and submits its elements as inputs to the Azure `New-ResourceGroup` runbook. When the Azure Runbook completes, a Logic Apps action returns an HTTP response with the results of the runbook action serialized as JSON.
+
+The Logic App was created in the Azure portal using the graphical design and is depicted in the following diagram:
+
+![ResourceGroupLogicApp](assets/ResourceGroupLogicApp.png)
+
+Usage of the graphical interface for Logic Apps is abundantly documented online. References are provided below.
+
+**N.B.**, an Azure Active Directory service principal must be created for use by the Logic App. (This must be performed prior to creating the Logic App in the designer UI or deploying from template.)
 
 ```powershell
 
@@ -368,6 +372,13 @@ $credentials = New-Object Microsoft.Azure.Commands.ActiveDirectory.PSADPasswordC
 $AZURE_LOGICAPP_API_SP = New-AzADServicePrincipal -DisplayName 'resourcegroups-la-sp' `
                                                   -PasswordCredential $credentials
 
+
+# Assign Reader role over the subscription scope to allow service principal to read resources in subscription; required to populate Logic App designer UI when creating a new connection.
+
+New-AzRoleAssignment -ApplicationId $AZURE_LOGICAPP_API_SP.ApplicationId.Guid `
+                     -RoleDefinitionName 'Reader' `
+                     -Scope $('/subscriptions/{0}' -f $AZURE_SUBSCRIPTION_ID)
+
 # Assign the appropriate roles to allow the service principal to create jobs from the New-ResourceGroup runbook.
 
 New-AzRoleAssignment -ApplicationId $AZURE_LOGICAPP_API_SP.ApplicationId.Guid `
@@ -379,16 +390,50 @@ New-AzRoleAssignment -ApplicationId $AZURE_LOGICAPP_API_SP.ApplicationId.Guid `
                      -RoleDefinitionName 'Automation Job Operator' `
                      -Scope $('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Automation/automationAccounts/{2}' `
                                 -f $AZURE_SUBSCRIPTION_ID, $AZURE_RESOURCE_GROUP, $AZURE_AUTOMATION_ACCOUNT_NAME)
+
 ```
+Access to the Logic App HTTP trigger is secured by generating a shared access key signature.
 
 ## Test Solution
 ```bash
-curl "$AZURE_LOGICAPP_HTTP_ENDPOINT"-H 'Content-Type: application/json' -d "${JSON_PAYLOAD}"`
+
+export AZURE_LOGICAPP_HTTP_ENDPOINT='{{ https://AZURE_LOGICAPP_HTTP_ENDPOINT }}'
+
+export JSON_PAYLOAD
+
+
+curl "$AZURE_LOGICAPP_HTTP_ENDPOINT" -H 'Content-Type: application/json' -X POST -d "${JSON_PAYLOAD}"
 ```
 
 ```powershell
 Invoke-WebRequest -Uri
 ```
+
+## Future Enhancements
+
+1. Create an Azure Devops CI/CD pipeline for Azure Resource Manager templates.
+
+2. Use Azure Active Directory authentication for Storage Blobs. AAD authentication is a more readily maintained configuration than the use of SAS tokens. This feature is currently in public preview. In order for the automation account to access the storage blob, the `Azure Storage Blob Reader` role must be assigned to it:
+
+```powershell
+
+$AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $('{0}_' -f $AZURE_AUTOMATION_ACCOUNT_NAME)).ApplicationId.Guid
+$AZURE_STORAGE_ROLE_SCOPE = $('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Storage/storageAccounts/{2}/blobServices/default/containers/{3}' -f $AZURE_SUBSCRIPTION_ID, $AZURE_RESOURCE_GROUP, $AZURE_STORAGE_ACCOUNT, 'templates')
+
+New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
+    -RoleDefinitionName "Storage Blob Data Reader" `
+    -Scope  "$AZURE_STORAGE_ROLE_SCOPE"
+```
+
+3. Create automation for the creation and maintenance of the runbook automation Runas Account. The current solution requires the use of the portal to create the Runas Account, as this allows the automatic creation of the time limited, self-signed certificate. This will require manual renewal. Microsoft has provided a Powershell script to perform these actions. However, it workst only with Windows.
+
+4. Remove reliance on a separate security principal for the Logic API connection object that reads the runbook and executes the job. This will only be possible after item 3, since creation of Logic App API connection object requires using the plain text password initially.
+
+5. Secure the HTTP endpoint of the Logic App.  Calls to trigger the Logic App workflow are authorized by using a Shared Access Signature (SAS) token presented in the query string of the request. A more secure approach would be to encapsulate the SAS token in the request header and use the Microsoft Azure API gateway or an Azure Functions Proxy. 
+
+The Logic App endpoint can be further secured by limiting acceptable source IP addresses in the Logic App configuration.
+
+6. Add approvals and notifications. Logic Apps offers connectors and actions to Microsoft Teams.
 
 ## Author
 
@@ -396,7 +441,7 @@ Vincent Balbarin <vincent.balbarin@yale.edu>
 
 ## License
 
-The licenses of these documents are held by [@YaleUniversity](https://github.com/YaleUniversity)under the [MIT License](/LICENSE.md).
+The licenses of these documents are held by [@YaleUniversity](https://github.com/YaleUniversity) under [MIT License](/LICENSE.md).
 
 ## References
 [5 Approaches for Public Cloud Self-Service Enablement and Governance (Gartner Subscriber Content)](https://www.gartner.com/document/3880094)
@@ -405,4 +450,12 @@ The licenses of these documents are held by [@YaleUniversity](https://github.com
 
 [Manage Runas Account](https://docs.microsoft.com/en-us/azure/automation/manage-runas-account)
 
-[Automation Deploy Template Runbook](https://docs.microsoft.com/en-us/azure/automation/automation-deploy-template-runbook) 
+[Automation Deploy Template Runbook](https://docs.microsoft.com/en-us/azure/automation/automation-deploy-template-runbook)
+
+[Quickstart: Create your first automated workflow with Azure Logic Apps - Azure portal](https://docs.microsoft.com/en-us/azure/logic-apps/quickstart-create-first-logic-app-workflow)
+
+[Runbook output and messages in Azure Automation](https://docs.microsoft.com/en-us/azure/automation/automation-runbook-output-and-messages)
+
+[Integrating Azure Automation Runbook Output with Logic Apps](https://medium.com/@singhkays/integrating-azure-automation-runbook-output-with-logic-apps-ef76d1bd76f2)
+
+[Secure access in Azure Logic Apps](https://docs.microsoft.com/en-us/azure/logic-apps/logic-apps-securing-a-logic-app)
