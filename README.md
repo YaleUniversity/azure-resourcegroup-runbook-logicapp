@@ -349,7 +349,7 @@ In this case, a simple workflow is triggered by an HTTP request carrying a JSON 
 
 The Logic App workflow de-serializes the JSON payload and submits its elements as inputs to the Azure `New-ResourceGroup` runbook. When the Azure Runbook completes, a Logic Apps action returns an HTTP response with the results of the runbook action serialized as JSON.
 
-The Logic App was created in the Azure portal using the graphical design and is depicted in the following diagram:
+The Logic App **itsautomation-dev-itsfd-logicapp** was created in the Azure portal using the graphical design and is depicted in the following diagram:
 
 ![ResourceGroupLogicApp](assets/ResourceGroupLogicApp.png)
 
@@ -395,18 +395,38 @@ New-AzRoleAssignment -ApplicationId $AZURE_LOGICAPP_API_SP.ApplicationId.Guid `
 Access to the Logic App HTTP trigger is secured by generating a shared access key signature.
 
 ## Test Solution
-```bash
 
-export AZURE_LOGICAPP_HTTP_ENDPOINT='{{ https://AZURE_LOGICAPP_HTTP_ENDPOINT }}'
-
-export JSON_PAYLOAD
-
-
-curl "$AZURE_LOGICAPP_HTTP_ENDPOINT" -H 'Content-Type: application/json' -X POST -d "${JSON_PAYLOAD}"
-```
+To test the solution:
 
 ```powershell
-Invoke-WebRequest -Uri
+cp ./sample_data/payload.json.example ./sample_data/payload.json
+# Insert values into ./sample_data/payload.json
+
+$AZURE_LOGICAPP_HTTP_POST_URL = (Get-AzLogicAppTriggerCallbackUrl -ResourceGroupName $AZURE_RESOURCE_GROUP `
+                                 -Name 'itsautomation-dev-itsfd-logicapp' `
+                                 -TriggerName 'request').Value
+
+$RESPONSE = Invoke-WebRequest -Uri $AZURE_LOGICAPP_HTTP_POST_URL `
+                              -Method 'POST' `
+                              -Body $(Get-Content ./sample_data/payload.json) `
+                              -Headers @{ 'Content-Type' = 'application/json'}
+
+$RESPONSE.StatusCode # Should 200 if successful
+$RESPONSE.Content # Should be JSON object with ResourceGroupName and ResourceId
+```
+
+```bash
+
+cp ./sample_data/payload.json.example ./sample_data/payload.json
+
+# Insert values into ./sample_data/payload.json
+
+# Obtain logic app endpoint Uri from portal
+export AZURE_LOGICAPP_HTTP_POST_URL='{{ AZURE_LOGICAPP_HTTP_POST_URI }}'
+
+export JSON_PAYLOAD=$(<"./sample_data/payload.json")
+
+curl "$AZURE_LOGICAPP_HTTP_POST_URL" -H 'Content-Type: application/json' -X POST -d "${JSON_PAYLOAD}"
 ```
 
 ## Future Enhancements

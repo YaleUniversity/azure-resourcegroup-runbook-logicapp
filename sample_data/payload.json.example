@@ -1,0 +1,9 @@
+{
+    "ApplicationBusinessUnit": "{{ ApplicationBusinessUnit }}",
+    "ApplicationName": "{{ ApplicationName }}",
+    "ChargingAccount": "{{ ChargingAccount }}",
+    "DataSensitivity": "{{ DataSensitivity }}",
+    "Environment": "{{ Environment }}",
+    "OwnerSigninName": "{{ OwnerSigninName }}",
+    "ResourceLocation": "{{ ResourceLocation }}"
+}
