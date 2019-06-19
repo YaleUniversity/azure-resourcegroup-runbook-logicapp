@@ -177,7 +177,6 @@ $deployment = New-AzDeployment -Name $AZURE_DEPLOYMENT `
 
 $AZURE_RESOURCE_GROUP = $deployment.Outputs.resourceGroupName.Value
 
-
 ```
 
 ### Create Storage Account and Upload ARM Template Artifacts to Blob Storage
@@ -235,17 +234,9 @@ $AZURE_AUTOMATION_ACCOUNT_APPID = $(Get-AzADApplication -DisplayNameStartWith $(
 
 ```
 
-An automation account contains an Azure Runas Account, an application service principal that is granted a `Contributor` role to the subscription.
+An automation account contains an Azure Runas Account. This account is an application service principal granted the `Contributor` role over the subscription containing the Azure Automation account. This role is assigned by default during its creation.
 
-Additionally, this runas account will require the `Owner` role assigned to it at the `resourcegroups` scope of the subscription since it will need to assign ownership of the resource group to the user.
-
-In the Azure Portal, creating an Azure Automation Account creates an Azure Runas Account. (Actually, it creates two accounts--each corresponding to Azure Resource Manager and Azure Classic.)
-
-Microsoft provides a convenient script [New-RunasAccount.ps1](https://docs.microsoft.com/en-us/azure/automation/manage-runas-account) that creates a new self-signed certificate, creates an application service principal associated witht he automatin account, creates an automation connection, and assignes the `Contributor` role to the service principal over a specified subscription.
-
-Because this script assumes a Windows server environment, it will not work with PowerShell Core (Dotnet Core). It will be necessary to use the Azure Portal.
-
-(**TODO**: Incorporate [SelfSignedCertificate](https://www.powershellgallery.com/packages/SelfSignedCertificate/0.0.4) module for pure CLI implementation.)
+For this solution, this runas account will require additionally the `Owner` role assigned to it at the subscription scope. This highly privileged role is required, as the Runas Account  will require sufficient permissions over the subscription to assign  ownership of the resource groups to the user on whose behalf it creates a resource group.
 
 Navigate to the Azure Portal page for the automation account **resourcegroup-automation** and select **Run as accounts** under **Account Settings**. Click on **Azure Run as Account**.
 
@@ -274,6 +265,17 @@ New-AzRoleAssignment -ApplicationId $AZURE_AUTOMATION_ACCOUNT_APPID `
 ```
 
 Second, the **Azure Run As Account** requires sufficient privileges against the Azure AD Graph API  to read the Azure User object's properties. An Azure Active Directory administrator must assign `directory.read.all` role to the service principal in **App Registration** blade of the **Azure Portal**.
+
+[In the Azure Portal, creating an Azure Automation Account creates an Azure Runas Account. (Actually, it creates two accounts--each corresponding to Azure Resource Manager and Azure Classic.)
+
+Microsoft provides a convenient script [New-RunasAccount.ps1](https://docs.microsoft.com/en-us/azure/automation/manage-runas-account) that creates a new self-signed certificate, creates an application service principal associated witht he automatin account, creates an automation connection, and assignes the `Contributor` role to the service principal over a specified subscription.
+
+Because this script assumes a Windows server environment, it will not work with PowerShell Core (Dotnet Core). It will be necessary to use the Azure Portal.
+
+(**TODO**: Incorporate [SelfSignedCertificate](https://www.powershellgallery.com/packages/SelfSignedCertificate/0.0.4) module for pure CLI implementation.)]
+
+
+After the creation of the Runas Account, a few required Automation Account variables will need to be established.
 
 ```powershell
 # Establish variables for the runbook to use
